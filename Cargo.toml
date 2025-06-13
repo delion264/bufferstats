@@ -1,6 +1,9 @@
 [package]
-name = "peak-finder"
-version = "0.1.0"
+name = "bufferstats"
 edition = "2021"
+version = "0.1.0"
+description = "A library for calculating statistics on buffer data"
+repository = "https://github.com/delion264/bufferstats"
+license-file = "LICENSE"
 
 [dependencies]
