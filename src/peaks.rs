@@ -1,4 +1,14 @@
-pub fn find_peaks(&self, buffer: &Vec<f64>, threshold: f64) -> Vec<Peak> {
+use crate::bufferstats::BufferStats;
+
+pub struct Peak {
+    pub start_idx: usize,
+    pub end_idx: usize,
+    pub peak_idx: usize,
+    pub peak_magnitude: f64,
+    pub fwhm: usize,
+}
+
+pub fn find_peaks(buffer: &Vec<f64>, threshold: f64) -> Vec<Peak> {
     // Normalise bin magnitude
     let buffer_norm: Vec<f64> = buffer
         .iter()
