@@ -1,5 +1,6 @@
 use crate::bufferstats::BufferStats;
 
+#[derive(Debug)]
 pub struct Peak {
     pub start_idx: usize,
     pub end_idx: usize,
