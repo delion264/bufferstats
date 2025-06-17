@@ -24,8 +24,8 @@ pub fn find_peaks(buffer: &Vec<f64>, threshold: f64, window_size: usize) -> Vec<
     let peaks: Vec<(usize, &f64)> = buffer_norm
         .iter()
         .enumerate()
-        .filter(|(_idx, &magnitude)| {
-            magnitude - window.median.expect("median not defined")
+        .filter(|(idx, &magnitude)| {
+            magnitude - window.mean_buffer[*idx]
                 > window.stdev.expect("stdev not calculated") * threshold
         })
         .map(|(idx, magnitude)| (idx, magnitude))
