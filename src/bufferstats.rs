@@ -29,7 +29,7 @@ impl BufferStats {
             window_size <= data.len(),
             "Window size must be < length of data buffer"
         );
-        for idx in 0..data.len() {
+        for _idx in 0..data.len() {
             self.mean_buffer.push(0.);
             self.stdev_buffer.push(0.);
         }
