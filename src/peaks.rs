@@ -9,7 +9,7 @@ pub struct Peak {
     pub fwhm: usize,
 }
 
-pub fn find_peaks(buffer: &Vec<f64>, threshold: f64) -> Vec<Peak> {
+pub fn find_peaks(buffer: &Vec<f64>, threshold: f64, window_size: usize) -> Vec<Peak> {
     // Normalise bin magnitude
     let buffer_norm: Vec<f64> = buffer
         .iter()
@@ -17,8 +17,9 @@ pub fn find_peaks(buffer: &Vec<f64>, threshold: f64) -> Vec<Peak> {
         .collect();
 
     // 1. Isolate bins in neighbourhood of local maxima
+    // TO DO: Moving average calculation. Currently, mean is calculated over the whole buffer
     let mut window = BufferStats::new();
-    window.mean(&buffer_norm);
+    window.mean(&buffer_norm, window_size);
     window.std_deviation(&buffer_norm);
     let peaks: Vec<(usize, &f64)> = buffer_norm
         .iter()

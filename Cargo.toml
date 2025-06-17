@@ -5,5 +5,3 @@ version = "0.1.1"
 description = "A library for calculating statistics on buffer data"
 repository = "https://github.com/delion264/bufferstats"
 license-file = "LICENSE"
-
-[dependencies]
