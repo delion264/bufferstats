@@ -44,7 +44,7 @@ impl BufferStats {
                         data[0..window_size].iter().sum::<f64>() as f64 / window_size as f64;
                 } else {
                     self.mean_buffer[idx] = self.mean_buffer[idx - 1]
-                        + (data[idx] - data[idx - window_size]) / window_size as f64;
+                        + ((data[idx] - data[idx - window_size]) / window_size as f64);
                 }
             }
         }

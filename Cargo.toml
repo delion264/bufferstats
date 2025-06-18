@@ -1,7 +1,7 @@
 [package]
 name = "bufferstats"
 edition = "2021"
-version = "0.1.5"
+version = "0.1.6"
 description = "A library for calculating statistics on buffer data"
 repository = "https://github.com/delion264/bufferstats"
 license-file = "LICENSE"
