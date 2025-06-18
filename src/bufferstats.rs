@@ -1,5 +1,5 @@
 pub struct BufferStats {
-    pub median: Option<f64>,
+    pub average: f64,
     pub mean_buffer: Vec<f64>,
     pub stdev_buffer: Vec<f64>,
     pub variance: f64,
@@ -9,7 +9,7 @@ pub struct BufferStats {
 impl BufferStats {
     pub fn new() -> BufferStats {
         BufferStats {
-            median: None,
+            average: 0.,
             mean_buffer: Vec::new(),  // Moving average value at each index
             stdev_buffer: Vec::new(), // Standard deviation over the moving average window
             variance: 0.,
@@ -29,18 +29,14 @@ impl BufferStats {
             window_size <= data.len(),
             "Window size must be < length of data buffer"
         );
-        for _idx in 0..data.len() {
-            self.mean_buffer.push(0.);
-            self.stdev_buffer.push(0.);
-        }
+        self.mean_buffer = vec![0.; data.len()];
+        self.stdev_buffer = vec![0.; data.len()];
+
         if window_size == 0 {
             let sum = data.iter().sum::<f64>() as f64;
             let count = data.len();
-            match count {
-                positive if positive > 0 => self.median = Some(sum / count as f64),
-                _ => self.median = None,
-            }
-            self.mean_buffer.fill(self.median.unwrap());
+            self.average = sum / count as f64;
+            self.mean_buffer.fill(self.average);
         } else if window_size >= 2 {
             for idx in 0..data.len() {
                 if idx < window_size {
@@ -56,7 +52,7 @@ impl BufferStats {
 
     // pub fn std_deviation(&mut self, data: &[f64]) {
     //     self.mean(data, 0);
-    //     self.stdev = match (self.median, data.len()) {
+    //     self.stdev = match (self.average, data.len()) {
     //         (Some(data_mean), count) if count > 0 => {
     //             self.variance = data
     //                 .iter()
@@ -97,7 +93,7 @@ mod tests {
             ],
             0,
         );
-        assert_eq!(window.median.unwrap(), 27.8125);
+        assert_eq!(window.average, 27.8125);
     }
     #[test]
     fn moving_average_two() {
