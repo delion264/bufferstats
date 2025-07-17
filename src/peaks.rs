@@ -1,4 +1,5 @@
 use crate::bufferstats::BufferStats;
+use ringbuffer::{AllocRingBuffer, RingBuffer};
 
 #[derive(Debug)]
 pub struct Peak {
@@ -6,55 +7,78 @@ pub struct Peak {
     pub end_idx: usize,
     pub peak_idx: usize,
     pub peak_magnitude: f64,
-    pub fwhm: usize,
+    pub peak_width: usize,
 }
 
-pub fn find_peaks(buffer: &Vec<f64>, threshold: f64, window_size: usize) -> Vec<Peak> {
-    // Normalise bin magnitude
-    let buffer_norm: Vec<f64> = buffer
-        .iter()
-        .map(|bin| bin / (buffer.len() as f64))
-        .collect();
+pub struct Peakfinder {
+    pub peak_indices: Vec<usize>,
+    pub peaks: Vec<Peak>,
+    pub processing_interval: usize,
+    pub window_size: usize,
+    pub peak_weight: f64,
+    pub weighted_stats: BufferStats,
+    pub weighted_data: AllocRingBuffer<f64>,
+}
 
-    // 1. Isolate bins in neighbourhood of local maxima
-    let mut window = BufferStats::new();
-    window.mean(&buffer_norm, window_size);
-    window.std_deviation(&buffer_norm);
-    let peaks: Vec<(usize, &f64)> = buffer_norm
-        .iter()
-        .enumerate()
-        .filter(|(idx, &magnitude)| {
-            magnitude - window.mean_buffer[*idx]
-                > window.stdev.expect("stdev not calculated") * threshold
-        })
-        .map(|(idx, magnitude)| (idx, magnitude))
-        .collect();
+impl Peakfinder {
+    pub fn new(&mut self, proc_int: usize, window_len: usize, weight: f64) -> Self {
+        Self {
+            peak_indices: Vec::new(),
+            peaks: Vec::new(),
+            processing_interval: proc_int, // Think buffer length in terms of FFT size
+            window_size: window_len,
+            peak_weight: weight,
+            weighted_stats: BufferStats::new(self.processing_interval, self.window_size),
+            weighted_data: AllocRingBuffer::new(self.processing_interval),
+        }
+    }
 
-    let mut peak_collection: Vec<Peak> = Vec::new();
-    let mut peak_iter = peaks.chunk_by(|curr, next| next.0 - curr.0 == 1);
+    pub fn index_peaks(&mut self, data: &[f64], threshold: f64) {
+        assert_eq!(data.len(), self.processing_interval);
+        for idx in 0..data.len() {
+            self.weighted_data.push(data[idx]);
+        }
+        self.weighted_stats.init_moving_avg(&data);
+        self.weighted_stats.init_moving_variance(&data);
 
-    let mut maxima_neighbourhood = peak_iter.next();
+        for idx in 0..data.len() {
+            if data[idx]
+                > self.weighted_stats.moving_avg[idx - 1]
+                    + threshold * self.weighted_stats.moving_variance[idx - 1].sqrt()
+            {
+                self.peak_indices.push(idx);
+                self.weighted_data[idx] = (1. - self.peak_weight) * self.weighted_data[idx - 1]
+                    + self.peak_weight * self.weighted_data[idx];
+                // Mark signal indices
+            }
+            self.weighted_stats
+                .update_moving_avg(&self.weighted_data.to_vec());
+            self.weighted_stats
+                .update_moving_variance(&self.weighted_data.to_vec());
+        }
+        let mut peak_iter = self.peak_indices.chunk_by(|curr, next| next - curr == 1);
+        let mut maxima_neighbourhood = peak_iter.next();
 
-    while maxima_neighbourhood != None {
-        let local_max_start = maxima_neighbourhood.unwrap().first().unwrap().0;
-        let local_max_end = maxima_neighbourhood.unwrap().last().unwrap().0;
-        let mut max_val = 0.;
-        let mut max_idx = 0;
+        while maxima_neighbourhood != None {
+            let local_max_start = maxima_neighbourhood.unwrap().first().unwrap();
+            let local_max_end = maxima_neighbourhood.unwrap().last().unwrap();
+            let mut max_val = 0.;
+            let mut max_idx = 0;
 
-        for sample in maxima_neighbourhood.unwrap() {
-            if *sample.1 > max_val {
-                max_val = *sample.1;
-                max_idx = sample.0;
+            for idx in maxima_neighbourhood.unwrap() {
+                if data[*idx] > max_val {
+                    max_val = data[*idx];
+                    max_idx = *idx;
+                }
+                self.peaks.push(Peak {
+                    start_idx: *local_max_start,
+                    end_idx: *local_max_end,
+                    peak_idx: (max_idx),
+                    peak_magnitude: (max_val),
+                    peak_width: (local_max_end - local_max_start),
+                });
+                maxima_neighbourhood = peak_iter.next();
             }
         }
-        peak_collection.push(Peak {
-            start_idx: (local_max_start),
-            end_idx: (local_max_end),
-            peak_idx: (max_idx),
-            peak_magnitude: (max_val),
-            fwhm: (local_max_end - local_max_start),
-        });
-        maxima_neighbourhood = peak_iter.next();
     }
-    peak_collection
 }
