@@ -40,11 +40,12 @@ impl Peakfinder {
         }
         self.weighted_stats.init_moving_avg(&data);
         self.weighted_stats.init_moving_variance(&data);
+        self.weighted_stats.init_moving_max(&data);
 
         for idx in 0..data.len() {
             if data[idx]
                 > self.weighted_stats.moving_avg[idx - 1]
-                    + threshold * self.weighted_stats.moving_variance[idx - 1].sqrt()
+                    + threshold * self.weighted_stats.moving_max[idx - 1]
             {
                 self.peak_indices.push(idx);
                 self.weighted_data[idx] = (1. - self.peak_weight) * self.weighted_data[idx - 1]
@@ -55,6 +56,8 @@ impl Peakfinder {
                 .update_moving_avg(&self.weighted_data.to_vec());
             self.weighted_stats
                 .update_moving_variance(&self.weighted_data.to_vec());
+            self.weighted_stats
+                .update_moving_max(&self.weighted_data.to_vec());
         }
         let mut peak_iter = self.peak_indices.chunk_by(|curr, next| next - curr == 1);
         let mut maxima_neighbourhood = peak_iter.next();
