@@ -8,6 +8,7 @@ pub struct BufferStats {
     pub total_stdev: f64,
     pub moving_avg: AllocRingBuffer<f64>,
     pub moving_variance: AllocRingBuffer<f64>,
+    pub moving_max: AllocRingBuffer<f64>,
 }
 
 impl BufferStats {
@@ -20,6 +21,7 @@ impl BufferStats {
             total_stdev: 0.,
             moving_avg: AllocRingBuffer::new(buffer_len),
             moving_variance: AllocRingBuffer::new(buffer_len), // Standard deviation over the moving average window
+            moving_max: AllocRingBuffer::new(buffer_len),
         }
     }
 
@@ -54,6 +56,20 @@ impl BufferStats {
         }
     }
 
+    pub fn init_moving_max(&mut self, data: &[f64]) {
+        let mut window_max = 0.;
+        for idx in 0..self.buffer_size {
+            if idx < self.window_size {
+                if data[idx] > window_max {
+                    window_max = data[idx];
+                }
+                self.moving_max.push(window_max);
+            } else {
+                self.update_moving_variance(&data)
+            }
+        }
+    }
+
     // Rolling buffer update methods
     pub fn update_moving_avg(&mut self, data: &[f64]) {
         let oldest_data = data[0];
@@ -76,6 +92,16 @@ impl BufferStats {
         let newest_variance = self.moving_variance.back().unwrap();
         self.moving_variance
             .push(newest_variance + (newest_diff - oldest_diff) / self.window_size as f64)
+    }
+
+    pub fn update_moving_max(&mut self, data: &[f64]) {
+        let newest_data = data[data.len() - 1];
+        let curr_window_max = self.moving_max.back().unwrap();
+        if newest_data > *curr_window_max {
+            self.moving_max.push(newest_data);
+        } else {
+            self.moving_max.push(*curr_window_max);
+        }
     }
 }
 
